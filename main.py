@@ -1,72 +1,73 @@
 import os
+import platform
+import psutil
+import shutil
 import socket
-import traceback
-import requests
 from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-TARGET_HOST = "apim.djezzy.dz"
-TARGET_URL = "https://apim.djezzy.dz/mobile-api/oauth2/registration"
-
 @app.route("/")
 def home():
-    return "Diagnostic API running 🚀"
+    return "Server Info API Running 🚀"
 
-@app.route("/test")
-def test_api():
-    debug = {}
+@app.route("/server-info")
+def server_info():
 
-    # 1️⃣ اختبار DNS
+    # RAM
+    ram = psutil.virtual_memory()
+
+    # CPU
+    cpu_count = psutil.cpu_count(logical=True)
+    cpu_percent = psutil.cpu_percent(interval=1)
+
+    # Disk
+    total, used, free = shutil.disk_usage("/")
+
+    # System Info
+    system_info = {
+        "system": platform.system(),
+        "node_name": platform.node(),
+        "release": platform.release(),
+        "version": platform.version(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+    }
+
+    # User / Root Check
     try:
-        ip = socket.gethostbyname(TARGET_HOST)
-        debug["dns_resolution"] = ip
-    except Exception as e:
-        debug["dns_error"] = str(e)
+        is_root = (os.geteuid() == 0)
+    except AttributeError:
+        is_root = False  # Windows fallback
 
-    # 2️⃣ اختبار اتصال TCP
-    try:
-        sock = socket.create_connection((TARGET_HOST, 443), timeout=5)
-        sock.close()
-        debug["tcp_connection"] = "Success"
-    except Exception as e:
-        debug["tcp_error"] = str(e)
+    current_user = os.getenv("USER")
 
-    # 3️⃣ اختبار HTTPS request
-    try:
-        params = {
-            "msisdn": "213795291083",
-            "client_id": "87pIExRhxBb3_wGsA5eSEfyATloa",
-            "scope": "smsotp"
-        }
+    # IP Address
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
 
-        headers = {
-            "User-Agent": "MobileApp/3.0.0",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "consent-agreement": [{"marketing-notifications": False}],
-            "is-consent": True
-        }
-
-        response = requests.post(
-            TARGET_URL,
-            params=params,
-            json=data,
-            headers=headers,
-            timeout=10
-        )
-
-        debug["http_status"] = response.status_code
-        debug["http_response"] = response.text[:1000]
-
-    except Exception as e:
-        debug["request_error"] = str(e)
-        debug["error_type"] = type(e).__name__
-        debug["traceback"] = traceback.format_exc()
-
-    return jsonify(debug)
+    return jsonify({
+        "RAM": {
+            "total_MB": round(ram.total / (1024**2), 2),
+            "used_MB": round(ram.used / (1024**2), 2),
+            "free_MB": round(ram.available / (1024**2), 2),
+            "usage_percent": ram.percent
+        },
+        "CPU": {
+            "cores": cpu_count,
+            "usage_percent": cpu_percent
+        },
+        "Disk": {
+            "total_GB": round(total / (1024**3), 2),
+            "used_GB": round(used / (1024**3), 2),
+            "free_GB": round(free / (1024**3), 2)
+        },
+        "System": system_info,
+        "User": current_user,
+        "Is_Root": is_root,
+        "Hostname": hostname,
+        "Local_IP": local_ip
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

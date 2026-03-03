@@ -1,5 +1,9 @@
 psutil
 
+setuptools
+
+wheel
+
 requests
 
 python-telegram-bot[ext]

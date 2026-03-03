@@ -2,4 +2,4 @@ psutil
 
 requests
 
-pythontelegrambot
+python-telegram-bot==20.3 --no-binary :all:

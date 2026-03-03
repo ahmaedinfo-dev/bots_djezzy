@@ -1,7 +1,5 @@
 psutil
 
-setuptools
-
-wheel
-
 requests
+
+python-telegram-bot==20.3

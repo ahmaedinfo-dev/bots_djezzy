@@ -2,5 +2,4 @@ psutil
 
 requests
 
-
-python-telegram-bot
+python-telegram-bot[ext]
